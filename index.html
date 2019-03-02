@@ -1,27 +1,44 @@
-<title>Dat - Loading</title>
+<title>Dat - Browse the P2P Web</title>
+<style>
+  /** Based on https://flaviocopes.com/css-system-fonts/ **/
+  body {
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto",
+  "Oxygen", "Ubuntu", "Helvetica Neue", Arial, sans-serif, "Apple Color Emoji",
+  "Segoe UI Emoji", "Segoe UI Symbol";
+    text-align: center;
+    background: #2ACA4B;
+    color: #293648;
+    font-size: larger;
+  }
+
+  a:visited {
+    font-weight: bold;
+  }
+  a {
+    color: #293648;
+  }
+  .hidden {
+    display: none;
+  }
+</style>
+<noscript>
+  This page requires JavaScript to load content from the Dat network
+</noscript>
+<div id="info" class="hidden">
+  <h1>Load dat content from the </h1>
+  <p>
+    <a href="?url=dat://0a9e202b8055721bd2bc93b3c9bbc03efdbda9cfee91f01a123fdeaadeba303e/posts">Example</a>
+  </p>
+  <form method="get">
+    <label for="url_entry">Enter a URL</label>
+    <input id="url_entry" name="url">
+    <button>Load</button>
+  </form>
+</div>
+<div id="loader">
+  <h2>Loading...</h2>
+</div>
 <script type="text/javascript" src="https://bundle.run/dat-js@7"></script>
-<script type="module" >
-  const DAT_REGEX = /dat:\/\/([^/]+)\/?(.*)?/i
-
-  const dat = new datJs({
-    gateway: 'wss://gateway.mauve.moe'
-  })
-
-  const url = new URL(window.location).searchParams.get('url')
-
-  console.log('Loading up', url)
-
-  const repo = dat.get(url)
-
-  const [_, key, path] = url.match(DAT_REGEX)
-
-  repo.archive.readFile(path, 'utf8', (err, data) => {
-    document.body.innerHTML = data
-  })
-</script>
-<p>
-  <center>
-    <h1>Loading</h1>
-    <a href="?url=dat%3A%2F%2F0a9e202b8055721bd2bc93b3c9bbc03efdbda9cfee91f01a123fdeaadeba303e%2Findex.html">Example</a>
-  </center>
-</p>
+<script src="https://wzrd.in/standalone/mime%2flite@latest"></script>
+<script type="text/javascript" src="https://bundle.run/random-access-idb"></script>
+<script type="module" src="index.js"></script>
