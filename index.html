@@ -1,0 +1,27 @@
+<title>Dat - Loading</title>
+<script type="text/javascript" src="https://bundle.run/dat-js@7"></script>
+<script type="module" >
+  const DAT_REGEX = /dat:\/\/([^/]+)\/?(.*)?/i
+
+  const dat = new datJs({
+    gateway: 'wss://gateway.mauve.moe'
+  })
+
+  const url = new URL(window.location).searchParams.get('url')
+
+  console.log('Loading up', url)
+
+  const repo = dat.get(url)
+
+  const [_, key, path] = url.match(DAT_REGEX)
+
+  repo.archive.readFile(path, 'utf8', (err, data) => {
+    document.body.innerHTML = data
+  })
+</script>
+<p>
+  <center>
+    <h1>Loading</h1>
+    <a href="?url=dat%3A%2F%2F0a9e202b8055721bd2bc93b3c9bbc03efdbda9cfee91f01a123fdeaadeba303e%2Findex.html">Example</a>
+  </center>
+</p>
