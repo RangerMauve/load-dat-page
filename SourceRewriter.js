@@ -30,26 +30,8 @@ export default class SourceRewriter {
     }
   }
 
+  // Rewrite any links, stylesheets, and external resources for dat
   async rewrite () {
-    // Find all HTML elements that might be loading some content
-    const srcItems = document.querySelectorAll('[src]')
-
-    for (let item of srcItems) {
-      const url = item.getAttribute('src')
-
-      if (shouldFilter(url)) continue
-
-      // The URL must either be a dat url or relative to the current path
-      // Clear the current URL while the content loads
-      item.src = ''
-
-      // Load the content asynchronously so that everything can be loaded in paralell
-      this.loadDatURL(url).then((blobURL) => {
-        // Set the src to a blob URL of the content
-        item.src = blobURL
-      })
-    }
-
     const anchorItems = document.querySelectorAll('a')
 
     for (let item of anchorItems) {
@@ -70,11 +52,27 @@ export default class SourceRewriter {
       // Clear the current URL while the content loads
       item.href = ''
 
+      const blobURL = await this.loadDatURL(url)
+      // Set the src to a blob URL of the content
+      item.href = blobURL
+    }
+
+    // Find all HTML elements that might be loading some content
+    const srcItems = document.querySelectorAll('[src]')
+
+    for (let item of srcItems) {
+      const url = item.getAttribute('src')
+
+      if (shouldFilter(url)) continue
+
+      // The URL must either be a dat url or relative to the current path
+      // Clear the current URL while the content loads
+      item.src = ''
+
       // Load the content asynchronously so that everything can be loaded in paralell
-      this.loadDatURL(url).then((blobURL) => {
-        // Set the src to a blob URL of the content
-        item.href = blobURL
-      })
+      const blobURL = await this.loadDatURL(url)
+      // Set the src to a blob URL of the content
+      item.src = blobURL
     }
 
     console.log({ srcItems, anchorItems, linkItems })

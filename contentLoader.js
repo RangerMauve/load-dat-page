@@ -20,6 +20,7 @@ export async function loadContentToPage (url) {
 
   const archive = await getArchive(url)
   await renderContent(archive, path || '')
+  startRewriting(url)
 }
 
 function startRewriting (url) {
@@ -28,6 +29,7 @@ function startRewriting (url) {
     loadDatURL: (toLoadURL) => {
       if (!toLoadURL.startsWith('dat://')) toLoadURL = resolveRelative(url, toLoadURL)
       console.log('Loading', toLoadURL)
+
       return loadDatURL(toLoadURL)
     },
     makeLink: (toLinkURL) => {
@@ -48,19 +50,23 @@ async function loadDatURL (url) {
   const archive = await getArchive(url)
 
   const { path } = parseDatURL(url)
+
+  const found = await resolveFileInArchive(archive, path)
+
+  console.log('loading resolved', url, found)
+
   var mimeType = mimelite.getType(path)
 
-  return getBlobURL(archive, path, mimeType)
+  return getBlobURL(archive, found.path, mimeType)
 }
 
 async function renderContent (archive, path) {
-  const stat = await getStat(archive, path || '/')
+  const found = await resolveFileInArchive(archive, path || '/')
 
-  if (stat.isFile()) {
-    await renderFile(archive, path)
-    startRewriting(url)
-  } else {
-    await renderFolder(archive, path)
+  if(found.type === 'file') {
+    await renderFile(archive, found.path)
+  } else if(found.type === 'folder') {
+    await renderFolder(archive, found.path)
   }
 }
 
@@ -92,6 +98,7 @@ async function renderFolder (archive, path) {
 }
 
 async function renderFile (archive, path) {
+  console.log('Rendering file', path)
   var mimeType = mimelite.getType(path)
 
   if (mimeType.match('image')) {
@@ -169,6 +176,7 @@ function getDirFiles (archive, path) {
 
 function getStat (archive, path) {
   return new Promise((resolve, reject) => {
+    console.log(archive)
     archive.stat(path, (err, stat) => {
       if (err) reject(err)
       else resolve(stat)
@@ -183,6 +191,24 @@ function getText (archive, path) {
       else resolve(text)
     })
   })
+}
+
+async function existsFile(archive, path) {
+  try {
+    const stat = await getStat(archive, path)
+    return stat.isFile()
+  } catch(e) {
+    return false
+  }
+}
+
+async function existsFolder(archive, path) {
+  try {
+    const stat = await getStat(archive, path)
+    return stat.isDirectory()
+  } catch (e) {
+    return false
+  }
 }
 
 async function getBlobURL (archive, path, mimeType) {
@@ -208,7 +234,7 @@ function getArchive (url) {
 
 // Based on algorythm used by hashbase and beaker
 // https://github.com/beakerbrowser/hashbase/blob/master/lib/apis/archive-files.js#L80
-async function resolveFileInArchive (archive, file) {
+async function resolveFileInArchive (archive, path) {
   /*
     Get the manifest
 
@@ -233,4 +259,51 @@ async function resolveFileInArchive (archive, file) {
 
     If nothing was able to load, show a 404 page
   */
+
+  let manifest = {}
+  try {
+    mainfest = JSON.parse(await getText(archive, '/dat.json'))
+  } catch(e) {
+    // Oh well
+  }
+
+  const prefix = manifest.web_root || ''
+  if (!path.startsWith('/')) path = `/${path}`
+
+  for(let makePath of CHECK_PATHS) {
+    const checkPath = makePath(prefix + path)
+    console.log('Checking', checkPath)
+    if(await existsFile(archive, checkPath)) return {
+      path: checkPath,
+      type: 'file'
+    }
+  }
+
+  if (await existsFolder(archive, prefix + path)) return {
+    path: prefix + path,
+    type: 'folder'
+  }
+
+  const { fallback_page } = manifest
+
+  if (fallback_page) {
+    if (await existsFile(archive, fallback_page)) return {
+      path: fallback_page,
+      type: 'file'
+    }
+    if (await existsFile(archive, prefix + fallback_page)) return {
+      path: prefix + fallback_page,
+      type: 'file'
+    }
+  }
+
+  throw new Error('Not Found')
 }
+
+const CHECK_PATHS = [
+  (path) => path,
+  (path) => path + `index.html`,
+  (path) => path + `/index.html`,
+  (path) => path + `.html`,
+  (path) => path + `.md`,
+]
