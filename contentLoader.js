@@ -28,7 +28,6 @@ function startRewriting (url) {
     delay: REWRITE_DELAY,
     loadDatURL: (toLoadURL) => {
       if (!toLoadURL.startsWith('dat://')) toLoadURL = resolveRelative(url, toLoadURL)
-      console.log('Loading', toLoadURL)
 
       return loadDatURL(toLoadURL)
     },
@@ -53,8 +52,6 @@ async function loadDatURL (url) {
 
   const found = await resolveFileInArchive(archive, path)
 
-  console.log('loading resolved', url, found)
-
   var mimeType = mimelite.getType(path)
 
   return getBlobURL(archive, found.path, mimeType)
@@ -73,7 +70,6 @@ async function renderContent (archive, path) {
 async function renderFolder (archive, path) {
   const files = await getDirFiles(archive, path)
 
-  console.log('Listing', files)
   const url = `dat://${archive.key.toString('hex')}/`
   const parent = getParentDir(path)
   if (!path.endsWith('/')) path += '/'
@@ -98,7 +94,6 @@ async function renderFolder (archive, path) {
 }
 
 async function renderFile (archive, path) {
-  console.log('Rendering file', path)
   var mimeType = mimelite.getType(path)
 
   if (mimeType.match('image')) {
@@ -176,7 +171,6 @@ function getDirFiles (archive, path) {
 
 function getStat (archive, path) {
   return new Promise((resolve, reject) => {
-    console.log(archive)
     archive.stat(path, (err, stat) => {
       if (err) reject(err)
       else resolve(stat)
@@ -272,7 +266,6 @@ async function resolveFileInArchive (archive, path) {
 
   for(let makePath of CHECK_PATHS) {
     const checkPath = makePath(prefix + path)
-    console.log('Checking', checkPath)
     if(await existsFile(archive, checkPath)) return {
       path: checkPath,
       type: 'file'
