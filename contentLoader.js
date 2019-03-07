@@ -296,7 +296,9 @@ async function resolveFileInArchive (archive, path) {
 const CHECK_PATHS = [
   (path) => path,
   (path) => path + `index.html`,
+  (path) => path + `index.md`,
   (path) => path + `/index.html`,
+  (path) => path + `/index.md`,
   (path) => path + `.html`,
   (path) => path + `.md`,
 ]
