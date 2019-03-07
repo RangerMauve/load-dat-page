@@ -15,7 +15,7 @@ Add in the dependencies:
 
 ```html
 <script type="text/javascript" src="https://bundle.run/dat-js@7"></script>
-<script src="https://wzrd.in/standalone/mime%2flite@latest"></script>
+<script type="text/javascript" src="https://wzrd.in/standalone/mime%2flite@latest"></script>
 <script type="text/javascript" src="https://bundle.run/random-access-idb"></script>
 ```
 
@@ -30,3 +30,11 @@ const datprojectURL = 'dat://60c525b5589a5099aa3610a8ee550dcd454c3e118f7ac93b7d4
 loadContentToPage(datprojectURL)
 </script>
 ```
+
+## TODO:
+
+- [ ] Intercept XMLHTTPRequest.prototype.open
+  - [ ] Support arraybuffer responseType
+- [ ] DatArchive API
+- [ ] `experimental.datPeers` API
+- [ ] Use streaming for resource rewriting
