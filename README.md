@@ -1,4 +1,4 @@
-# load-date-page
+# load-dat-page
 Load a dat webpage in a regular browser using [dat-js](https://github.com/datproject/dat-js/).
 
 [Try it out!](https://ranger.mauve.moe/load-dat-page/)
