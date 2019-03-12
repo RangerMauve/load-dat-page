@@ -5,7 +5,7 @@ const OBSERVATION_OPTIONS = {
   attributeFilter: ['src', 'href']
 }
 
-export default class SourceRewriter {
+module.exports = class SourceRewriter {
   constructor ({ loadDatURL, makeLink, delay }) {
     this.delay = delay
     this.loadDatURL = loadDatURL

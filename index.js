@@ -1,4 +1,4 @@
-import { loadContentToPage } from './contentLoader.js'
+const { loadContentToPage } = require('./contentLoader')
 
 const url = new URL(window.location).searchParams.get('url')
 

@@ -1,4 +1,8 @@
-import SourceRewriter from './SourceRewriter.js'
+const DatJs = require('dat-js')
+const randomAccessIdb = require('random-access-idb')
+const mimelite = require('mime/lite')
+
+const SourceRewriter = require('./SourceRewriter')
 
 const DAT_REGEX = /dat:\/\/([^/]+)\/?([^#?]*)?/i
 const REWRITE_DELAY = 1000
@@ -10,12 +14,16 @@ ${document.getElementById('transferrable-styles').innerHTML}
 `
 var db = randomAccessIdb('dats')
 
-const dat = new datJs({
+const dat = new DatJs({
   db: db,
   gateway: 'wss://gateway.mauve.moe'
 })
 
-export async function loadContentToPage (url) {
+module.exports = {
+  loadContentToPage
+}
+
+async function loadContentToPage (url) {
   const { path } = parseDatURL(url)
 
   const archive = await getArchive(url)
@@ -60,9 +68,9 @@ async function loadDatURL (url) {
 async function renderContent (archive, path) {
   const found = await resolveFileInArchive(archive, path || '/')
 
-  if(found.type === 'file') {
+  if (found.type === 'file') {
     await renderFile(archive, found.path)
-  } else if(found.type === 'folder') {
+  } else if (found.type === 'folder') {
     await renderFolder(archive, found.path)
   }
 }
@@ -137,7 +145,7 @@ function resolveRelative (origin, relativePath) {
 }
 
 function parseDatURL (url) {
-  let [_, key, path] = url.match(DAT_REGEX)
+  let [, key, path] = url.match(DAT_REGEX)
   let version = null
   if (key.includes('+')) [key, version] = key.split('+')
 
@@ -187,16 +195,16 @@ function getText (archive, path) {
   })
 }
 
-async function existsFile(archive, path) {
+async function existsFile (archive, path) {
   try {
     const stat = await getStat(archive, path)
     return stat.isFile()
-  } catch(e) {
+  } catch (e) {
     return false
   }
 }
 
-async function existsFolder(archive, path) {
+async function existsFolder (archive, path) {
   try {
     const stat = await getStat(archive, path)
     return stat.isDirectory()
@@ -209,6 +217,7 @@ async function getBlobURL (archive, path, mimeType) {
   return new Promise((resolve, reject) => {
     archive.readFile(path, (err, data) => {
       if (err) return reject(err)
+      const Blob = window.Blob
       const blob = new Blob([data.buffer], { type: mimeType })
       const url = URL.createObjectURL(blob)
       resolve(url)
@@ -256,37 +265,45 @@ async function resolveFileInArchive (archive, path) {
 
   let manifest = {}
   try {
-    mainfest = JSON.parse(await getText(archive, '/dat.json'))
-  } catch(e) {
+    manifest = JSON.parse(await getText(archive, '/dat.json'))
+  } catch (e) {
     // Oh well
   }
 
   const prefix = manifest.web_root || ''
   if (!path.startsWith('/')) path = `/${path}`
 
-  for(let makePath of CHECK_PATHS) {
+  for (let makePath of CHECK_PATHS) {
     const checkPath = makePath(prefix + path)
-    if(await existsFile(archive, checkPath)) return {
-      path: checkPath,
-      type: 'file'
+    if (await existsFile(archive, checkPath)) {
+      return {
+        path: checkPath,
+        type: 'file'
+      }
     }
   }
 
-  if (await existsFolder(archive, prefix + path)) return {
-    path: prefix + path,
-    type: 'folder'
+  if (await existsFolder(archive, prefix + path)) {
+    return {
+      path: prefix + path,
+      type: 'folder'
+    }
   }
 
-  const { fallback_page } = manifest
+  const fallback = manifest.fallback_page
 
-  if (fallback_page) {
-    if (await existsFile(archive, fallback_page)) return {
-      path: fallback_page,
-      type: 'file'
+  if (fallback) {
+    if (await existsFile(archive, fallback)) {
+      return {
+        path: fallback,
+        type: 'file'
+      }
     }
-    if (await existsFile(archive, prefix + fallback_page)) return {
-      path: prefix + fallback_page,
-      type: 'file'
+    if (await existsFile(archive, prefix + fallback)) {
+      return {
+        path: prefix + fallback,
+        type: 'file'
+      }
     }
   }
 
@@ -300,5 +317,5 @@ const CHECK_PATHS = [
   (path) => path + `/index.html`,
   (path) => path + `/index.md`,
   (path) => path + `.html`,
-  (path) => path + `.md`,
+  (path) => path + `.md`
 ]
