@@ -23,6 +23,6 @@
   "dependencies": {
     "dat-js": "^7.1.0",
     "mime": "^2.4.0",
-    "random-access-idb": "^1.2.1"
+    "random-access-web": "^1.1.0"
   }
 }

@@ -1,8 +1,9 @@
 const DatJs = require('dat-js')
-const randomAccessIdb = require('random-access-idb')
+const DB = require('random-access-web')
 const mimelite = require('mime/lite')
 
 const SourceRewriter = require('./SourceRewriter')
+const XHRPatcher = require('./XHRPatcher')
 
 const DAT_REGEX = /dat:\/\/([^/]+)\/?([^#?]*)?/i
 const REWRITE_DELAY = 1000
@@ -12,21 +13,35 @@ const injectStyle = `
 ${document.getElementById('transferrable-styles').innerHTML}
 </style>
 `
-var db = randomAccessIdb('dats')
-
-const dat = new DatJs({
-  db: db,
-  gateway: 'wss://gateway.mauve.moe'
-})
 
 module.exports = {
   loadContentToPage
+}
+
+let dat = null
+
+async function getDat() {
+  if(dat) return dat;
+
+  return initDat()
+}
+
+async function initDat() {
+  const db = await DB.init('dats')
+
+  dat = new DatJs({
+    db: db,
+    gateway: 'wss://gateway.mauve.moe'
+  })
+
+  return dat
 }
 
 async function loadContentToPage (url) {
   const { path } = parseDatURL(url)
 
   const archive = await getArchive(url)
+  startPatching(url)
   await renderContent(archive, path || '')
   startRewriting(url)
 }
@@ -53,6 +68,25 @@ function startRewriting (url) {
   rewriter.start()
 }
 
+function startPatching(url) {
+  const patcher = new XHRPatcher((toLoadURL) => {
+    if (!toLoadURL.startsWith('dat://')) toLoadURL = resolveRelative(url, toLoadURL)
+
+    return loadDatBuffer(toLoadURL)
+  })
+
+  patcher.patch()
+}
+
+async function loadDatBuffer(url) {
+  const archive = await getArchive(url)
+  const { path } = parseDatURL(url)
+
+  const found = await resolveFileInArchive(archive, path)
+
+  return getFileBuffer(archive, found.path)
+}
+
 async function loadDatURL (url) {
   const archive = await getArchive(url)
 
@@ -67,6 +101,8 @@ async function loadDatURL (url) {
 
 async function renderContent (archive, path) {
   const found = await resolveFileInArchive(archive, path || '/')
+
+  console.log('resolved in archive', found)
 
   if (found.type === 'file') {
     await renderFile(archive, found.path)
@@ -145,7 +181,7 @@ function resolveRelative (origin, relativePath) {
 }
 
 function parseDatURL (url) {
-  let [, key, path] = url.match(DAT_REGEX)
+  let [, key, path] = url.toString().match(DAT_REGEX)
   let version = null
   if (key.includes('+')) [key, version] = key.split('+')
 
@@ -213,19 +249,28 @@ async function existsFolder (archive, path) {
   }
 }
 
-async function getBlobURL (archive, path, mimeType) {
+async function getFileBuffer (archive, path) {
   return new Promise((resolve, reject) => {
     archive.readFile(path, (err, data) => {
       if (err) return reject(err)
-      const Blob = window.Blob
-      const blob = new Blob([data.buffer], { type: mimeType })
-      const url = URL.createObjectURL(blob)
-      resolve(url)
+      else resolve(data)
     })
-  })
+  });
 }
 
-function getArchive (url) {
+async function getBlobURL (archive, path, mimeType) {
+  const data = await getFileBuffer(archive, path)
+  const Blob = window.Blob
+
+  const blob = new Blob([data.buffer], { type: mimeType })
+  const url = URL.createObjectURL(blob)
+
+  return url
+}
+
+async function getArchive (url) {
+  const dat = await getDat()
+
   return new Promise((resolve, reject) => {
     const repo = dat.get(url)
 
