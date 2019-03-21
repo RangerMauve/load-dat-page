@@ -21,8 +21,9 @@
     "browserify": "^16.2.3"
   },
   "dependencies": {
-    "dat-js": "^7.1.0",
+    "dat-js": "github:datproject/dat-js#new-swarm-and-storage",
     "mime": "^2.4.0",
-    "random-access-web": "^1.1.0"
+    "random-access-web": "^1.1.0",
+    "stream-to-blob-url": "^2.1.1"
   }
 }

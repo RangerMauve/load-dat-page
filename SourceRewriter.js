@@ -11,7 +11,7 @@ module.exports = class SourceRewriter {
     this.loadDatURL = loadDatURL
     this.makeLink = makeLink
     this.lastRewrote = 0
-    this.observer = new window.MutationObserver(() => this.tryRewrite())
+    this.observer = new window.MutationObserver(() => this.rewrite())
   }
 
   start () {
@@ -53,6 +53,7 @@ module.exports = class SourceRewriter {
       item.href = ''
 
       const blobURL = await this.loadDatURL(url)
+
       // Set the src to a blob URL of the content
       item.href = blobURL
     }
@@ -71,11 +72,12 @@ module.exports = class SourceRewriter {
 
       // Load the content asynchronously so that everything can be loaded in paralell
       const blobURL = await this.loadDatURL(url)
+
       // Set the src to a blob URL of the content
       item.src = blobURL
     }
 
-    console.log({ srcItems, anchorItems, linkItems })
+    // console.log({ srcItems, anchorItems, linkItems })
   }
 }
 

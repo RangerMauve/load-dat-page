@@ -1,6 +1,6 @@
 const DatJs = require('dat-js')
-const DB = require('random-access-web')
 const mimelite = require('mime/lite')
+var toBlobURL = require('stream-to-blob-url')
 
 const SourceRewriter = require('./SourceRewriter')
 const XHRPatcher = require('./XHRPatcher')
@@ -18,24 +18,9 @@ module.exports = {
   loadContentToPage
 }
 
-let dat = null
-
-async function getDat() {
-  if(dat) return dat;
-
-  return initDat()
-}
-
-async function initDat() {
-  const db = await DB.init('dats')
-
-  dat = new DatJs({
-    db: db,
-    gateway: 'wss://gateway.mauve.moe'
-  })
-
-  return dat
-}
+const dat = new DatJs({
+  persist: true
+})
 
 async function loadContentToPage (url) {
   const { path } = parseDatURL(url)
@@ -43,7 +28,9 @@ async function loadContentToPage (url) {
   const archive = await getArchive(url)
   startPatching(url)
   await renderContent(archive, path || '')
-  startRewriting(url)
+  setTimeout(() => {
+    startRewriting(url)
+  }, 100)
 }
 
 function startRewriting (url) {
@@ -114,9 +101,12 @@ async function renderContent (archive, path) {
 async function renderFolder (archive, path) {
   const files = await getDirFiles(archive, path)
 
-  const url = `dat://${archive.key.toString('hex')}/`
+  const url = `dat://${archive.key.toString('hex')}`
   const parent = getParentDir(path)
   if (!path.endsWith('/')) path += '/'
+  if(!path.startsWith('/')) path = '/' + path
+
+  console.log('Rendering files for', url, path, files)
 
   setContent(`
     <title>${path.split('/').pop()}</title>
@@ -126,11 +116,11 @@ async function renderFolder (archive, path) {
         <a href="?url=${url}">/</a>
       </li>
       <li >
-        <a href="?url=${url}${parent}">../</a>
+        <a href="?url=${url}/${parent}">../</a>
       </li>
     ${files.map((file) => `
       <li>
-        <a href="?url=${url}${path}${file}">./${file}</a>
+        <a href="${url}${path}${file}">./${file}</a>
       </li>
     `).join('\n')}
     </ul>
@@ -195,7 +185,7 @@ function parseDatURL (url) {
 function getParentDir (path) {
   const pathParts = path.split('/')
   pathParts.pop()
-  return pathParts.join('/') + '/'
+  return pathParts.join('/')
 }
 
 function setContent (content) {
@@ -251,31 +241,38 @@ async function existsFolder (archive, path) {
 
 async function getFileBuffer (archive, path) {
   return new Promise((resolve, reject) => {
+    archive.stat(path, console.log.bind(console, 'Stat:', path))
     archive.readFile(path, (err, data) => {
+      console.log('Read file', path, err, data)
       if (err) return reject(err)
       else resolve(data)
     })
   });
 }
 
+function asyncToBlobURL(stream, mimeType) {
+  return new Promise((resolve, reject) => {
+    toBlobURL(stream, mimeType, (err, url) => {
+      if(err) reject(err)
+      else resolve(url)
+    })
+  })
+}
+
 async function getBlobURL (archive, path, mimeType) {
-  const data = await getFileBuffer(archive, path)
-  const Blob = window.Blob
-
-  const blob = new Blob([data.buffer], { type: mimeType })
-  const url = URL.createObjectURL(blob)
-
+  const stream = archive.createReadStream(path)
+  console.log('Loading blob', path, mimeType)
+  const url = await asyncToBlobURL(stream, mimeType)
+  console.log('Loaded blob', path, mimeType)
   return url
 }
 
 async function getArchive (url) {
-  const dat = await getDat()
-
   return new Promise((resolve, reject) => {
-    const repo = dat.get(url)
+    const archive = dat.get(url)
 
-    repo.ready(() => {
-      resolve(repo.archive)
+    archive.ready(() => {
+      resolve(archive)
     })
   })
 }
