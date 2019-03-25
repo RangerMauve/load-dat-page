@@ -63,4 +63,5 @@ typings/
 # AHHHH
 package-lock.json
 
-bundle.js
+# Add bundle to source for gh-pages
+# bundle.js
