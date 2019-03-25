@@ -23,7 +23,7 @@
   "dependencies": {
     "dat-js": "github:datproject/dat-js#new-swarm-and-storage",
     "mime": "^2.4.0",
-    "random-access-web": "^1.1.0",
+    "resolve-dat-path": "^1.0.0",
     "stream-to-blob-url": "^2.1.1"
   }
 }

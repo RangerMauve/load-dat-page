@@ -11,7 +11,8 @@ Load a dat webpage in a regular browser using [dat-js](https://github.com/datpro
 
 ## TODO:
 
-- [ ] Intercept XMLHTTPRequest.prototype.open
+- [x] Intercept `XMLHTTPRequest.prototype.open`
+  - [ ] Intercept `fetch()``
   - [ ] Support arraybuffer responseType
 - [ ] DatArchive API
 - [ ] `experimental.datPeers` API

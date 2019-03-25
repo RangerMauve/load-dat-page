@@ -1,6 +1,7 @@
 const DatJs = require('dat-js')
 const mimelite = require('mime/lite')
-var toBlobURL = require('stream-to-blob-url')
+const toBlobURL = require('stream-to-blob-url')
+const resolveDatPathRaw = require('resolve-dat-path')
 
 const SourceRewriter = require('./SourceRewriter')
 const XHRPatcher = require('./XHRPatcher')
@@ -55,7 +56,7 @@ function startRewriting (url) {
   rewriter.start()
 }
 
-function startPatching(url) {
+function startPatching (url) {
   const patcher = new XHRPatcher((toLoadURL) => {
     if (!toLoadURL.startsWith('dat://')) toLoadURL = resolveRelative(url, toLoadURL)
 
@@ -65,11 +66,11 @@ function startPatching(url) {
   patcher.patch()
 }
 
-async function loadDatBuffer(url) {
+async function loadDatBuffer (url) {
   const archive = await getArchive(url)
   const { path } = parseDatURL(url)
 
-  const found = await resolveFileInArchive(archive, path)
+  const found = await resolveDatPath(archive, path)
 
   return getFileBuffer(archive, found.path)
 }
@@ -79,7 +80,7 @@ async function loadDatURL (url) {
 
   const { path } = parseDatURL(url)
 
-  const found = await resolveFileInArchive(archive, path)
+  const found = await resolveDatPath(archive, path)
 
   var mimeType = mimelite.getType(path)
 
@@ -87,9 +88,7 @@ async function loadDatURL (url) {
 }
 
 async function renderContent (archive, path) {
-  const found = await resolveFileInArchive(archive, path || '/')
-
-  console.log('resolved in archive', found)
+  const found = await resolveDatPath(archive, path || '/')
 
   if (found.type === 'file') {
     await renderFile(archive, found.path)
@@ -104,9 +103,7 @@ async function renderFolder (archive, path) {
   const url = `dat://${archive.key.toString('hex')}`
   const parent = getParentDir(path)
   if (!path.endsWith('/')) path += '/'
-  if(!path.startsWith('/')) path = '/' + path
-
-  console.log('Rendering files for', url, path, files)
+  if (!path.startsWith('/')) path = '/' + path
 
   setContent(`
     <title>${path.split('/').pop()}</title>
@@ -203,15 +200,6 @@ function getDirFiles (archive, path) {
   })
 }
 
-function getStat (archive, path) {
-  return new Promise((resolve, reject) => {
-    archive.stat(path, (err, stat) => {
-      if (err) reject(err)
-      else resolve(stat)
-    })
-  })
-}
-
 function getText (archive, path) {
   return new Promise((resolve, reject) => {
     archive.readFile(path, 'utf-8', (err, text) => {
@@ -221,49 +209,29 @@ function getText (archive, path) {
   })
 }
 
-async function existsFile (archive, path) {
-  try {
-    const stat = await getStat(archive, path)
-    return stat.isFile()
-  } catch (e) {
-    return false
-  }
-}
-
-async function existsFolder (archive, path) {
-  try {
-    const stat = await getStat(archive, path)
-    return stat.isDirectory()
-  } catch (e) {
-    return false
-  }
-}
-
 async function getFileBuffer (archive, path) {
   return new Promise((resolve, reject) => {
-    archive.stat(path, console.log.bind(console, 'Stat:', path))
     archive.readFile(path, (err, data) => {
-      console.log('Read file', path, err, data)
       if (err) return reject(err)
       else resolve(data)
     })
-  });
+  })
 }
 
-function asyncToBlobURL(stream, mimeType) {
+function asyncToBlobURL (stream, mimeType) {
   return new Promise((resolve, reject) => {
     toBlobURL(stream, mimeType, (err, url) => {
-      if(err) reject(err)
+      if (err) reject(err)
       else resolve(url)
     })
   })
 }
 
 async function getBlobURL (archive, path, mimeType) {
-  const stream = archive.createReadStream(path)
-  console.log('Loading blob', path, mimeType)
+  const stream = archive.createReadStream(path, {
+    encoding: 'buffer'
+  })
   const url = await asyncToBlobURL(stream, mimeType)
-  console.log('Loaded blob', path, mimeType)
   return url
 }
 
@@ -277,87 +245,11 @@ async function getArchive (url) {
   })
 }
 
-// Based on algorythm used by hashbase and beaker
-// https://github.com/beakerbrowser/hashbase/blob/master/lib/apis/archive-files.js#L80
-async function resolveFileInArchive (archive, path) {
-  /*
-    Get the manifest
-
-    Try to redirect to public dir
-
-    Detect if it's a folder based on whether there is a trailing slash
-    If there's no trailing slash, see if adding a trailing slash resolves to a folder
-
-    If it's a folder
-      Try loading the folder + `index.html`
-    Else
-      Try loading the file
-      Try loading the file + html
-      Try loading the file + md
-
-    If it was a folder and no file was found
-      Render out the directory
-    If a file was found
-      Render out the file
-    If there is a fallback_page in the manifest
-      Try to load it
-
-    If nothing was able to load, show a 404 page
-  */
-
-  let manifest = {}
-  try {
-    manifest = JSON.parse(await getText(archive, '/dat.json'))
-  } catch (e) {
-    // Oh well
-  }
-
-  const prefix = manifest.web_root || ''
-  if (!path.startsWith('/')) path = `/${path}`
-
-  for (let makePath of CHECK_PATHS) {
-    const checkPath = makePath(prefix + path)
-    if (await existsFile(archive, checkPath)) {
-      return {
-        path: checkPath,
-        type: 'file'
-      }
-    }
-  }
-
-  if (await existsFolder(archive, prefix + path)) {
-    return {
-      path: prefix + path,
-      type: 'folder'
-    }
-  }
-
-  const fallback = manifest.fallback_page
-
-  if (fallback) {
-    if (await existsFile(archive, fallback)) {
-      return {
-        path: fallback,
-        type: 'file'
-      }
-    }
-    if (await existsFile(archive, prefix + fallback)) {
-      return {
-        path: prefix + fallback,
-        type: 'file'
-      }
-    }
-  }
-
-  throw new Error('Not Found')
+function resolveDatPath (archive, path) {
+  return new Promise((resolve, reject) => {
+    resolveDatPathRaw(archive, path, (err, resolved) => {
+      if (err) reject(err)
+      else resolve(resolved)
+    })
+  })
 }
-
-const CHECK_PATHS = [
-  (path) => path,
-  (path) => path + `index.html`,
-  (path) => path + `index.md`,
-  (path) => path + `/index.html`,
-  (path) => path + `/index.md`,
-  (path) => path + `.html`,
-  (path) => path + `.md`
-]

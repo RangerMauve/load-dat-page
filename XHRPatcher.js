@@ -1,11 +1,12 @@
+/* global XMLHttpRequest, CustomEvent */
 const IS_RELATIVE = /^\.\/|^\.\.\/|^\//
 
 module.exports = class XMLPatcher {
-  constructor(loadBuffer) {
+  constructor (loadBuffer) {
     this._loadBuffer = loadBuffer
   }
 
-  patch() {
+  patch () {
     this._open = XMLHttpRequest.prototype.open
     this._send = XMLHttpRequest.prototype.send
     this._addEventListener = XMLHttpRequest.prototype.addEventListener
@@ -15,25 +16,25 @@ module.exports = class XMLPatcher {
     const _open = this._open
     const _send = this._send
     const _addEventListener = this._addEventListener
-    const fetch = this._fetch
+    const _fetch = this._fetch
 
-    XMLHttpRequest.prototype.open = function(method, url) {
+    XMLHttpRequest.prototype.open = function (method, url) {
       this.__isDat = shouldInterceptURL(url)
-      if(!__isDat) {
+      if (!this.__isDat) {
         return _open.apply(this, arguments)
       }
     }
 
     XMLHttpRequest.prototype.send = function () {
-      if(!this.__isDat) return _send.apply(this, arguments)
+      if (!this.__isDat) return _send.apply(this, arguments)
       loadBuffer(this.__isDat).then((buffer) => {
         let response = null
         const { responseType } = this
-        if(responseType === "arraybuffer") {
+        if (responseType === 'arraybuffer') {
           response = buffer.buffer
-        } else if (responseType === "blob") {
+        } else if (responseType === 'blob') {
 
-        } else if(responseType === "json") {
+        } else if (responseType === 'json') {
           const text = buffer.toString()
           try {
             response = JSON.parse(text)
@@ -61,14 +62,14 @@ module.exports = class XMLPatcher {
     }
 
     XMLHttpRequest.prototype.addEventListener = function (name, listener) {
-      if(name === 'load') this.__loadHandler = listener
+      if (name === 'load') this.__loadHandler = listener
       return _addEventListener.apply(this, arguments)
     }
 
     window.fetch = function (url) {
       const isDat = shouldInterceptURL(url)
 
-      if(!isDat) return _fetch.apply(this, arguments)
+      if (!isDat) return _fetch.apply(this, arguments)
       console.log('intercepting fetch', url)
 
       return loadBuffer(isDat).then((buffer) => {
@@ -77,7 +78,7 @@ module.exports = class XMLPatcher {
     }
   }
 
-  unpatch() {
+  unpatch () {
     XMLHttpRequest.prototype.open = this._open
     XMLHttpRequest.prototype.send = this._send
     XMLHttpRequest.prototype.addEventListener = this._addEventListener
@@ -86,45 +87,45 @@ module.exports = class XMLPatcher {
 }
 
 class FakeResponse {
-  constructor(buffer, url) {
+  constructor (buffer, url) {
     this.body = new FakeBody(buffer)
     this.url = url
   }
-  get headers() {
+  get headers () {
     return {}
   }
-  get ok() {
+  get ok () {
     return true
   }
-  get status() {
+  get status () {
     return 200
   }
-  get statusText() {
-    return "OK"
+  get statusText () {
+    return 'OK'
   }
-  get useFinalURL() {
+  get useFinalURL () {
     return true
   }
 }
 
 class FakeBody {
-  constructor(buffer) {
+  constructor (buffer) {
     this._buffer = buffer
   }
-  async arrayBuffer() {
+  async arrayBuffer () {
     return this._buffer.buffer
   }
-  async text() {
+  async text () {
     return this.buffer.toString('utf-8')
   }
-  async json() {
+  async json () {
     return JSON.parse(await this.text())
   }
 }
 
-function shouldInterceptURL(url) {
-  if(!(url.startsWith('http:') || url.startsWith('https:'))) {
-    if(!url.match(IS_RELATIVE) && !url.startsWith('dat://')) {
+function shouldInterceptURL (url) {
+  if (!(url.startsWith('http:') || url.startsWith('https:'))) {
+    if (!url.match(IS_RELATIVE) && !url.startsWith('dat://')) {
       url = './' + url
     }
     return url
