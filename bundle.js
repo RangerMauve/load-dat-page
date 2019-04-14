@@ -14528,11 +14528,9 @@ class Dat extends EventEmitter {
    * @return {hyperdrive}  The archive object with the corresponding url.
    */
   get (url, opts) {
-    const key = encoding.decode(url)
-    const normalizedURL = `dat://${encoding.encode(key)}`
-    const archive = this.archives.find((archive) => archive.url === normalizedURL)
+    const archive = this.archives.find((archive) => archive.url === url)
     if (archive) return archive
-    return this._add(normalizedURL, opts)
+    return this._add(url, opts)
   }
 
   _add (url, opts) {
@@ -14578,9 +14576,7 @@ class Dat extends EventEmitter {
   }
 
   has (url) {
-    const key = encoding.decode(url)
-    const normalizedURL = `dat://${encoding.encode(key)}`
-    return !!this.archives.find((archive) => archive.url === normalizedURL)
+    return !!this.archives.find((archive) => archive.url === url)
   }
 
   _replicate (info) {
@@ -16849,13 +16845,7 @@ class DiscoverySwarmStreamWebsocket extends DSS {
     const stream = opts.stream
     const id = opts.id
 
-    let connection = null
-    try {
-      connection = websocket(LOCALHOST_DISCOVERY)
-    } catch(e) {
-      console.error('Error creating socket to local discovery server', e)
-      connection = websocket(discovery)
-    }
+    const connection = websocket(LOCALHOST_DISCOVERY)
 
     super({
       id,
@@ -36539,9 +36529,9 @@ module.exports = function resolveFileInArchive (archive, path, cb) {
 
     function try404 () {
       let fallback = manifest.fallback_page
-      if (!fallback.startsWith('/')) fallback = `/${fallback}`
 
       if (fallback) {
+        if (!fallback.startsWith('/')) fallback = `/${fallback}`
         checkExistsFile(archive, fallback, cb, () => {
           checkExistsFile(archive, prefix + fallback, cb, notFound)
         })
@@ -36580,8 +36570,8 @@ function checkExistsFile (archive, path, onYes, onNo) {
 
 function getManifest (archive, cb) {
   archive.readFile(MANIFEST_LOCATION, 'utf-8', (err, rawManifest) => {
-    if (err) return cb({})
     let manifest = {}
+    if (err) return cb(manifest)
     try {
       manifest = JSON.parse(rawManifest)
     } catch (e) {
