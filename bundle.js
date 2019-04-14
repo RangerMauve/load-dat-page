@@ -16845,7 +16845,13 @@ class DiscoverySwarmStreamWebsocket extends DSS {
     const stream = opts.stream
     const id = opts.id
 
-    const connection = websocket(LOCALHOST_DISCOVERY)
+    let connection = null
+    try {
+      connection = websocket(LOCALHOST_DISCOVERY)
+    } catch(e) {
+      console.error('Error creating socket to local discovery server', e)
+      connection = websocket(discovery)
+    }
 
     super({
       id,
@@ -42428,7 +42434,10 @@ function WebSocketStream(target, protocols, options) {
   if (socket.readyState === socket.OPEN) {
     stream = proxy
   } else {
-    stream = duplexify.obj()
+    stream = stream = duplexify(undefined, undefined, options)
+    if (!options.objectMode) {
+      stream._writev = writev
+    }
     socket.onopen = onopen
   }
 
