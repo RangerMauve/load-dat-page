@@ -92,7 +92,7 @@ async function renderContent (archive, path) {
 
   if (found.type === 'file') {
     await renderFile(archive, found.path)
-  } else if (found.type === 'folder') {
+  } else if (found.type === 'directory') {
     await renderFolder(archive, found.path)
   }
 }
