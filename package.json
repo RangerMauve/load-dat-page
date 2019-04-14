@@ -22,6 +22,7 @@
   },
   "dependencies": {
     "dat-js": "github:datproject/dat-js#new-swarm-and-storage",
+    "discovery-swarm-web": "^1.0.5",
     "mime": "^2.4.0",
     "resolve-dat-path": "^1.0.0",
     "stream-to-blob-url": "^2.1.1"
