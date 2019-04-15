@@ -15,6 +15,12 @@ ${document.getElementById('transferrable-styles').innerHTML}
 </style>
 `
 
+const injectMobileMeta = `
+<meta charset="utf-8">
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+`
+
 module.exports = {
   loadContentToPage
 }
@@ -107,13 +113,14 @@ async function renderFolder (archive, path) {
 
   setContent(`
     <title>${path.split('/').pop()}</title>
+    ${injectMobileMeta}
     ${injectStyle}
     <ul>
       <li>
-        <a href="?url=${url}">/</a>
+        <a href="${url}/">/</a>
       </li>
       <li >
-        <a href="?url=${url}/${parent}">../</a>
+        <a href="${url}/${parent}">../</a>
       </li>
     ${files.map((file) => `
       <li>
@@ -131,6 +138,7 @@ async function renderFile (archive, path) {
     const blobURL = await getBlobURL(archive, path, mimeType)
     setContent(`
       <title>${path.split('/').pop()}</title>
+      ${injectMobileMeta}
       ${injectStyle}
       <img src="${blobURL}" />
     `)
@@ -138,6 +146,7 @@ async function renderFile (archive, path) {
     const blobURL = await getBlobURL(archive, path, mimeType)
     setContent(`
       <title>${path.split('/').pop()}</title>
+      ${injectMobileMeta}
       ${injectStyle}
       <video controls>
         <source src="${blobURL}" type="${mimeType}">
@@ -150,6 +159,7 @@ async function renderFile (archive, path) {
     const text = await getText(archive, path)
     setContent(`
       <title>${path.split('/').pop()}</title>
+      ${injectMobileMeta}
       ${injectStyle}
       <main style="white-space: pre-wrap;">${text}</main>
     `)
@@ -186,6 +196,8 @@ function getParentDir (path) {
 }
 
 function setContent (content) {
+  console.log('Setting content')
+  console.log(content)
   document.open()
   document.write(content)
   document.close()
