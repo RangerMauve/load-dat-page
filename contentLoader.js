@@ -45,7 +45,7 @@ function startRewriting (url) {
     delay: REWRITE_DELAY,
     loadDatURL: (toLoadURL) => {
       if (!toLoadURL.startsWith('dat://')) toLoadURL = resolveRelative(url, toLoadURL)
-
+      console.log('Loading content', toLoadURL)
       return loadDatURL(toLoadURL)
     },
     makeLink: (toLinkURL) => {
