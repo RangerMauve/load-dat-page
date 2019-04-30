@@ -7041,6 +7041,7 @@ class Dat extends EventEmitter {
   }
 
   _replicate (info) {
+    console.log('Replicating', info)
     var stream = hypercoreProtocol({
       id: this.opts.id,
       live: true,
@@ -7061,6 +7062,7 @@ class Dat extends EventEmitter {
   }
 
   _replicateFeed (stream, discoveryKey) {
+    console.log('Replicating feed', discoveryKey)
     if (this.destroyed) {
       stream.end()
       return
